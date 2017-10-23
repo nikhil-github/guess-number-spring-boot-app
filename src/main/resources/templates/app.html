@@ -1,0 +1,177 @@
+<html ng-app="app">
+<head>
+	<title>Guess the number!</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"></link>
+	<style>
+		.register_container {}
+		.game_container {width:600px; float:left;}
+		.players_container {width:200px;}
+	</style>
+</head>
+<body ng-controller="appCtrl">
+<div class="container theme-showcase" role="main">
+	<div class="page-header">
+		<h1><b>Welcome to guess a number game!</b></h1>
+	</div>
+	<div ng-show="duplicateMessage" class="alert alert-warning"><h2>The name you entered is already registered</h2></div>
+	<div ng-hide="displayVar" class="register_container">
+		<div class="well lead">Register by entering your name</div>
+		<div class="form-group">
+			<label>Enter Name:</label>
+			<div class="input-group">
+				<input type="text" class="form-control" ng-model="name" />
+				<span class="input-group-btn">
+					<button class="btn btn-info" type="button" ng-click="register()">Register</button>
+				</span>
+			</div>
+		</div>
+	</div>
+	
+	<div class="row">
+        <div ng-show="displayVar" class="col-sm-8">
+			<h2 >Hello {{name}}, You are playing Game No: {{gameNumber}}</h2><label class="text-info">Your PointsBalance is {{pointBalance}}</label>
+			<div class="well lead">Guess a whole number between 1 and 100.</div>
+			<div class="form-group">
+				<label>Your Guess:</label>
+				<div class="input-group" >
+					<input class="form-control" ng-model="guess" type="number" ng-readonly="isDisabled"/>
+					<span class="input-group-btn">
+						<button class="btn btn-primary" ng-model="button"  ng-disabled="isDisabled" ng-click="verifyGuess()">GO</button>
+					</span>
+				</div>
+			</div>
+			<div ng-show="display" class="alert alert-success">{{message}}</div> 
+		</div>
+		<div ng-show="displayVar2" class="col-sm-4">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<h3 class="panel-title">User Playing Now .......</h3>
+				</div>
+				<div class="panel-body">
+					<div class="text-info" ng-repeat="user in users">{{user.userName}}</div> 
+				</div>
+			</div>
+		</div>
+	</div>
+
+	
+</div>  
+<script>
+ 
+var app = angular.module('app', []);
+     
+ app.controller('appCtrl', function($scope, $http) {
+         
+	 	$scope.users = [];
+	 	$scope.gameNumber = 0;
+	 	$scope.pointBalance = 100;
+	 	$scope.isDisabled = false; 
+	 	$scope.domainuri= 'http://localhost:8080';
+	 	
+	 	$scope.register = function() {
+	 		
+    		  
+    		  var userObj = {"userName" : $scope.name,"points" : 0 };
+    		  var httpDuplicate = 422;
+    		  
+      		  $http({  
+                  method : 'POST',  
+                  url : $scope.domainuri +'/api/register/',
+                  data : angular.toJson(userObj),  
+                  headers : {  
+                      'Content-Type' : 'application/json'  
+                  } 
+              }).then(function successCallback(response) { 
+            	  getGame();
+          		  $scope.displayVar = true;
+        		  $scope.displayVar2 = true;
+        		  $scope.duplicateMessage=false;
+        		  getActivePlayers();
+              }, function errorCallback(response) {  
+            	  console.log(response.statusText);  
+               	  if(response.status==httpDuplicate)	{
+               		  $scope.duplicateMessage=true;
+               	  }
+              });
+      		  
+      		 
+     	
+    	  }
+ 
+          $scope.verifyGuess = function() {
+        	  console.log($scope.guess);
+     		  var guessObj = {"userName" : $scope.name,"guessNumber" : $scope.guess ,"gameNumber" : $scope.gameNumber };
+     		  $scope.isDisabled = true;
+              $scope.uri = $scope.domainuri + '/api/guess/';
+     
+              $http({  
+                  method : 'POST',  
+                  url : $scope.uri,
+                  data : angular.toJson(guessObj),  
+                  headers : {  
+                      'Content-Type' : 'application/json'  
+                  } 
+              }).then(function successCallback(response) { 
+            	  $scope.display = true;
+            	  $scope.message = response.data.message ;
+            	  getUser();
+            	  getGame();
+            	  getActivePlayers();
+              }, function errorCallback(response) {  
+            	  console.log(response.statusText);  
+              });         
+          	  pause(1000);
+          	  $scope.isDisabled = false;
+    	  }
+
+          
+          function getGame(){
+        	  $http({  
+                  method : 'GET',  
+                  url : $scope.domainuri + '/api/game/' 
+              }).then(function successCallback(response) { 
+            	    $scope.gameNumber = response.data.gameNumber ;
+              }, function errorCallback(response) {  
+            	  console.log(response.statusText);  
+              });
+          }	
+  
+          function getUser(){
+        	  $http({  
+                  method : 'GET',  
+                  url : $scope.domainuri + '/api/user?userName='+ $scope.name 
+              }).then(function successCallback(response) { 
+               	  $scope.pointBalance = response.data.points ;
+              }, function errorCallback(response) {  
+            	  console.log(response.statusText);  
+              });
+          }	
+          
+          function getActivePlayers() {
+             $http({  
+                 method : 'GET',  
+                 url : $scope.domainuri + '/api/users/' 
+             }).then(function successCallback(response) { 
+           	    $scope.users = response.data.users ;
+             }, function errorCallback(response) {  
+           	  console.log(response.statusText);  
+             });  
+         }
+          
+          
+            //disable the field for 1 second
+			function pause(milliseconds) {
+					var start = new Date().getTime();
+					var i = 100000000;
+					while (i > 0) {
+						if ((new Date().getTime() - start) > milliseconds) {
+							break;
+						}
+						i--;
+					}
+				}
+	});
+</script>
+</body>
+</html>
